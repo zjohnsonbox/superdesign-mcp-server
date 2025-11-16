@@ -1,0 +1,9 @@
+to add this mcp to your claude code:
+
+claude mcp add --transport stdio --scope user superdesign  \
+--env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
+--env WORKSPACE_ROOT="./" \
+-- \
+npx tsx ./src/index.ts
+
+

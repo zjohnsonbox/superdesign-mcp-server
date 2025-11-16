@@ -1,0 +1,192 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# macOS and Windows special files
+.LSOverride
+Icon?
+._DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDouble
+.LSOverride
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Editor and IDE backup files
+*.bak
+*.backup
+*.tmp
+*.temp
+*~
+.#*
+\#*#
+.*.swp
+.*.swo
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Temporary folders
+tmp/
+temp/
+
+# Test files
+test-output/
+test-results/
+
+# SuperDesign MCP generated files and working directories
+.superdesign/
+design_iterations/
+themes/
+design_system/
+exports/
+previews/
+
+# MCP server runtime files
+logs/
+*.log
+mcp-*.json
+claude-mcp-*.json
+
+# Cloud deployment files (keep templates)
+pm2-logs/
+pm2-*.log
+.cloud-deploy/
+*.pid
+
+# Temporary AI generation files
+ai-temp/
+tmp-outputs/
+batch-results/
+.cache-generated/
+
+# Preview server files
+.preview/
+.preview-server/
+live-preview*/
+
+# AI/ML model files and cache
+*.model
+*.pkl
+*.pickle
+*.h5
+*.pb
+*.bin
+.checkpoints/
+model-cache/
+embeddings-cache/
+
+# API keys and secrets (redundant with .env but extra safety)
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.api-keys/
+.private-keys/
+
+# Development testing files
+test-designs/
+demo-output/
+preview-tests/
+integration-test-results/
+
+# Claude Code specific files
+.claude-session/
+.claude-cache/
+.claude-temp/
+claude-chats/
+chat-history/

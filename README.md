@@ -23,14 +23,19 @@ Works seamlessly with Cursor, Windsurf, Claude Code, and plain VS Code.
 
 HOW TO INSTALL/ADD MCP SERVER TO YOUR CLAUDE CODE CLI
 ---
-cd into superdesign-mcp-server/superdesign-mcp-server and run cmd: 
+cd into superdesign-mcp-server/superdesign-mcp-server and run shell:
 ---
-claude mcp remove superdesign -s user
-claude mcp add --transport stdio --scope user superdesign  \
---env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
---env WORKSPACE_ROOT="./" \
--- \
-npx tsx ./src/index.ts
+add-mcp-into-claude-code-cli.sh
+
+if you don't want to build mcp again, you could run cmd:
+---
+    claude mcp remove superdesign -s user
+    claude mcp add --transport stdio --scope user superdesign  \
+    --env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
+    --env WORKSPACE_ROOT="$pwd" \
+    -- \
+    npx tsx "$pwd/src/index.ts"
+
 ---
 claude mcp list # to see that the mcp is added or not
 

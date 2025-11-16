@@ -17,7 +17,7 @@ export type MCPToolResult = {
 // Configuration Types
 export interface MCPServerConfig {
   // AI Provider Configuration
-  aiProvider: 'claude-api' | 'claude-code' | 'openai' | 'openrouter';
+  aiProvider: 'claude-api' | 'claude-code' | 'openai' | 'openrouter' | 'custom-api';
   anthropicApiKey?: string;
   openaiApiKey?: string;
   openrouterApiKey?: string;

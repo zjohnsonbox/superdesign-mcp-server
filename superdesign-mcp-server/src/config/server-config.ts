@@ -5,7 +5,7 @@ import { logger } from '../utils/logger.js';
 
 export const DEFAULT_CONFIG: MCPServerConfig = {
   // AI Provider Configuration
-  aiProvider: process.env.AI_PROVIDER || 'claude-api',
+  aiProvider: (process.env.AI_PROVIDER as any) || 'claude-api',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN,
   openaiApiKey: process.env.OPENAI_API_KEY,
   openrouterApiKey: process.env.OPENROUTER_API_KEY,

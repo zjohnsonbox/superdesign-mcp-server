@@ -1,4 +1,4 @@
-# 🧠 SuperDesign — AI Design Agent for Your IDE
+# 🧠 SuperDesign MCP Server — AI Design Agent for Your Claude Code
 
 **🆕 New:** [SuperDesign Chrome Extension](https://chromewebstore.google.com/detail/obpjaonipoaomjnokbimppohbpjibflm) - Clone any website & UI
 
@@ -6,7 +6,7 @@
 
 ![SuperDesign Cover](cover.png)
 
-### **By:** [AI Jason](https://x.com/jasonzhou1993)
+### **By:** [AI Jason](https://x.com/jasonzhou1993) and Johnson (MCP Server)
 
 SuperDesign is the first **open-source design agent** that lives right inside your IDE.  
 Generate UI mockups, components, and wireframes directly from natural language prompts.  
@@ -19,7 +19,20 @@ Works seamlessly with Cursor, Windsurf, Claude Code, and plain VS Code.
 
 [Upvote on Hackernews](https://news.ycombinator.com/item?id=44376003)
 
-[Install guide](https://www.superdesign.dev/ide-extension)
+[Install guide for SuperDesign](https://www.superdesign.dev/ide-extension)
+
+HOW TO INSTALL/ADD MCP SERVER TO YOUR CLAUDE CODE CLI
+---
+cd into superdesign-mcp-server/superdesign-mcp-server and run cmd: 
+---
+claude mcp remove superdesign -s user
+claude mcp add --transport stdio --scope user superdesign  \
+--env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
+--env WORKSPACE_ROOT="./" \
+-- \
+npx tsx ./src/index.ts
+---
+claude mcp list # to see that the mcp is added or not
 
 ---
 

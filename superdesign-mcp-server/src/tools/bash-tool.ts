@@ -4,6 +4,226 @@ import { logger } from '../utils/logger.js';
 import { spawn, ChildProcess } from 'child_process';
 
 /**
+ * Enhanced security validation result
+ */
+interface SecurityValidationResult {
+  isValid: boolean;
+  reason?: string;
+}
+
+/**
+ * Validate command security with enhanced checks
+ */
+function validateCommandSecurity(command: string, workingDirectory: string): SecurityValidationResult {
+  // Check for empty command
+  if (!command || command.trim().length === 0) {
+    return { isValid: false, reason: 'Command cannot be empty' };
+  }
+
+  // Strictly forbid dangerous commands and patterns
+  const dangerousPatterns = [
+    // File system destruction
+    /rm\s+-rf?\s+[\/~]/,
+    />\s*\/dev\/(sd[a-z]|null)/,
+    /mkfs/,
+    /dd\s+if=/,
+
+    // System control
+    /shutdown/,
+    /reboot/,
+    /halt/,
+    /poweroff/,
+    /systemctl/,
+    /service\s+.*\s+(start|stop|restart|enable|disable)/,
+
+    // User management
+    /passwd/,
+    /su\s/,
+    /sudo\s+su/,
+    /sudo\s+[\/]/,
+    /chown\s+root/,
+    /chmod\s+[0-9]{3,4}\s+[\/~]/,
+
+    // Network and services
+    /iptables/,
+    /ufw/,
+    /firewalld/,
+    /nc\s+-l/,
+    /netcat/,
+
+    // Download and execute
+    /wget.*\|\s*(sh|bash|python|perl|ruby)/,
+    /curl.*\|\s*(sh|bash|python|perl|ruby)/,
+
+    // Configuration files
+    />\s*\/etc\//,
+    /echo.*>\s*\/etc\//,
+    /crontab/,
+
+    // Process manipulation
+    /kill\s+-9/,
+    /pkill/,
+    /killall/,
+
+    // Package management
+    /apt-get\s+(install|remove|purge)/,
+    /yum\s+(install|remove|erase)/,
+    /pip\s+install.*--user/,
+    /npm\s+install\s+-g/,
+
+    // Script execution with network
+    /python.*-c.*import.*(socket|urllib|requests)/,
+    /perl.*-e.*socket/,
+    /ruby.*-e.*socket/,
+    /node.*-e.*require.*(http|https|net)/,
+
+    // Environment manipulation
+    /export\s+PATH.*[\/~]/,
+    /export\s+LD_PRELOAD/,
+
+    // Device access
+    /\/dev\/(mem|kmem|port)/,
+    /mknod/,
+
+    // Backup and compression attacks
+    /tar\s+.*\/[\/~]/,
+    /rsync\s+.*\/[\/~]/,
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(command)) {
+      return {
+        isValid: false,
+        reason: `Dangerous command pattern detected: ${pattern.source}`
+      };
+    }
+  }
+
+  // Check for command chaining and injection attempts
+  const injectionPatterns = [
+    /[;&|`$()]/,  // Command separators and substitutions
+    /\$\{[^}]*\}/,  // Variable expansion
+    /`[^`]*`/,  // Backtick command substitution
+    /\$\([^)]*\)/,  // Command substitution
+    /<<\s*EOF/,  // Here document
+    /\*\*/,  // Recursive glob that could escape
+  ];
+
+  for (const pattern of injectionPatterns) {
+    if (pattern.test(command)) {
+      return {
+        isValid: false,
+        reason: `Command injection attempt detected: ${pattern.source}`
+      };
+    }
+  }
+
+  // Check for suspicious file paths
+  const pathPatterns = [
+    /\.\.[\/\\]/,  // Directory traversal
+    /[\/\\]\.\.[\/\\]/,  // Hidden directory traversal
+    /^\/etc\//,  // System config
+    /^\/root\//,  // Root directory
+    /^\/boot\//,  // Boot directory
+    /^\/sys\//,   // System directory
+    /^\/proc\//,  // Process directory
+  ];
+
+  for (const pattern of pathPatterns) {
+    if (pattern.test(command) || pattern.test(workingDirectory)) {
+      return {
+        isValid: false,
+        reason: `Suspicious path access detected: ${pattern.source}`
+      };
+    }
+  }
+
+  // Length limits to prevent command buffer overflow
+  if (command.length > 1000) {
+    return { isValid: false, reason: 'Command too long (max 1000 characters)' };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Parse command arguments safely (handle quoted strings)
+ */
+function parseCommandArgs(command: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+  let i = 0;
+
+  while (i < command.length) {
+    const char = command[i];
+
+    if ((char === '"' || char === "'") && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      inQuotes = false;
+      quoteChar = '';
+    } else if (char === ' ' && !inQuotes) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+
+    i++;
+  }
+
+  if (current) {
+    args.push(current);
+  }
+
+  if (args.length === 0) {
+    throw new Error('No valid command found');
+  }
+
+  return args;
+}
+
+/**
+ * Sanitize environment variables
+ */
+function sanitizeEnvironment(env: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  const allowedEnvVars = [
+    'PATH',
+    'HOME',
+    'USER',
+    'SHELL',
+    'LANG',
+    'LC_ALL',
+    'TERM',
+    'PWD',
+    'NODE_ENV',
+    'ANTHROPIC_AUTH_TOKEN',  // Already masked by MCP
+    'AI_PROVIDER',
+    'WORKSPACE_ROOT'
+  ];
+
+  for (const [key, value] of Object.entries(env)) {
+    if (allowedEnvVars.includes(key) && value && typeof value === 'string') {
+      // Remove dangerous characters from environment values
+      const sanitizedValue = value
+        .replace(/[;&|`$()<>]/g, '')
+        .replace(/\n|\r/g, '')
+        .substring(0, 500); // Limit value length
+
+      sanitized[key] = sanitizedValue;
+    }
+  }
+
+  return sanitized;
+}
+
+/**
  * Bash command execution result
  */
 export interface BashResult {
@@ -184,12 +404,24 @@ async function executeBashCommand(
     const env = { ...process.env, ...environment };
 
     try {
-      // Spawn child process
-      child = spawn(command, [], {
-        shell: shell,
+      // Enhanced security validation before execution
+      const validationResult = validateCommandSecurity(command, workingDirectory);
+      if (!validationResult.isValid) {
+        throw new Error(`Command validation failed: ${validationResult.reason}`);
+      }
+
+      // Parse command safely - split by spaces but respect quoted arguments
+      const args = parseCommandArgs(command);
+
+      // Spawn child process with enhanced security
+      child = spawn(args[0], args.slice(1), {
+        shell: false,  // Disable shell to prevent injection
         cwd: workingDirectory,
-        env: env,
-        stdio: captureOutput ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'inherit', 'inherit']
+        env: sanitizeEnvironment(env),
+        stdio: captureOutput ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'inherit', 'inherit'],
+        detached: false,
+        uid: process.getuid(),  // Run as current user
+        gid: process.getgid()   // Run as current group
       });
 
       // Set up timeout

@@ -50,39 +50,20 @@ export class CustomApiProvider extends AIProvider {
         this.isInitialized = true;
     }
 
-    async generateDesign(prompt: string, options: DesignOptions): Promise<DesignResult[]> {
+    override async generateDesign(prompt: string, options: DesignOptions): Promise<DesignResult[]> {
         if (!this.isInitialized) {
             throw new Error('Provider not initialized');
         }
 
         try {
-            logger.info(`Starting design generation with ${options.variations} variations`, { provider: 'custom-api' });
+            logger.info(`Generating ${options.designType} design`, {
+                provider: 'custom-api',
+                variations: options.variations,
+                outputFormat: options.outputFormat
+            });
 
-            // Prepare the SuperDesign system prompt
-            const designWorkflow = new DesignWorkflowManager();
-            const systemPrompt = designWorkflow.generateSystemPrompt('design');
-
-            // Generate the 3-parallel design generation prompt
-            const designPrompt = `Create ${options.variations} design variations for: ${prompt}
-
-IMPORTANT: Generate exactly ${options.variations} complete, distinct designs.
-Each design should be self-contained with:
-- Complete HTML structure
-- Embedded CSS styling using modern practices
-- Responsive design for mobile, tablet, and desktop
-- Semantic HTML5 markup
-- Proper accessibility attributes
-
-Use the ${options.framework || 'html'} framework with ${options.theme || 'modern'} styling.
-
-Return the results as valid JSON array with each design having:
-- html: string (complete HTML)
-- css: string (complete CSS)
-- description: string (brief description)
-- variation: number (1-${options.variations})
-- framework: string
-- timestamp: string (ISO format)
-- theme: string (if applicable)`;
+            // Build design prompt
+            const designPrompt = this.buildDesignPrompt(prompt, options);
 
             // Prepare request for your custom API
             const requestBody = {
@@ -91,12 +72,96 @@ Return the results as valid JSON array with each design having:
                 temperature: this.temperature,
                 messages: [
                     {
-                        role: 'system',
-                        content: systemPrompt
-                    },
+                        role: 'user',
+                        content: `You are a UI/UX design expert. Generate complete, working HTML/CSS designs based on the user's requirements.
+
+${designPrompt}`
+                    }
+                ]
+            };
+
+            // Make request to your custom API
+            const url = `${this.baseUrl}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`,
+                'User-Agent': 'SuperDesign-MCP-Server/1.0.0'
+            };
+
+            logger.info('Making API request', {
+                url,
+                headers: {
+                    ...headers,
+                    Authorization: 'Bearer ***' // Mask the token for security
+                },
+                requestBody
+            }, 'custom-api');
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(requestBody),
+                signal: AbortSignal.timeout(this.timeout)
+            });
+
+            logger.info('API response received', {
+                status: response.status,
+                statusText: response.statusText,
+                url
+            }, 'custom-api');
+
+            if (!response.ok) {
+                // Try to get error details from response
+                let errorDetails = '';
+                try {
+                    const errorText = await response.text();
+                    errorDetails = `. Response body: ${errorText.substring(0, 200)}`;
+                } catch (e) {
+                    errorDetails = `. Could not read response body: ${e.message}`;
+                }
+
+                throw new Error(`Design generation failed: ${response.status} ${response.statusText}${errorDetails}`);
+            }
+
+            const data = await response.json() as any;
+            const content = data.content?.[0]?.text || '';
+
+            logger.info(`Design generation completed`, {
+                provider: 'custom-api',
+                model: this.model
+            });
+
+            // Parse the response to extract design results
+            return this.parseDesignsFromResponse(content, options, new Date().toISOString());
+
+        } catch (error) {
+            logger.error('Design generation failed', {
+                error: (error as Error).message,
+                provider: 'custom-api'
+            });
+            throw error;
+        }
+    }
+
+    override async query(prompt: string, options?: Partial<AIProviderOptions>): Promise<string> {
+        if (!this.isInitialized) {
+            throw new Error('Provider not initialized');
+        }
+
+        try {
+            logger.info(`Processing query request`, { provider: 'custom-api' });
+
+            // For general queries, just use the base implementation
+            const requestBody = {
+                model: this.model,
+                max_tokens: Math.min(this.maxTokens, 4000),
+                temperature: this.temperature,
+                messages: [
                     {
                         role: 'user',
-                        content: designPrompt
+                        content: `You are a helpful AI assistant specializing in UI/UX design and development.
+
+${prompt}`
                     }
                 ]
             };
@@ -114,14 +179,14 @@ Return the results as valid JSON array with each design having:
             });
 
             if (!response.ok) {
-                throw new Error(`Design generation failed: ${response.status} ${response.statusText}`);
+                throw new Error(`Query failed: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json() as any;
             const content = data.content?.[0]?.text || '';
             const usage = data.usage || {};
 
-            logger.info(`Design generation completed`, {
+            logger.info(`Query completed`, {
                 provider: 'custom-api',
                 model: this.model,
                 promptTokens: usage.prompt_tokens || 0,
@@ -129,11 +194,10 @@ Return the results as valid JSON array with each design having:
                 totalTokens: usage.total_tokens || 0
             });
 
-            // Parse the response to extract design results
-            return this.parseDesignsFromResponse(content, options, new Date().toISOString());
+            return content;
 
         } catch (error) {
-            logger.error('Design generation failed', {
+            logger.error('Query failed', {
                 error: (error as Error).message,
                 provider: 'custom-api'
             });
@@ -151,13 +215,24 @@ Return the results as valid JSON array with each design having:
 
             const themePrompt = this.buildThemePrompt(options);
 
-            const response = await fetch(`${this.baseUrl}/v1/messages`, {
-                method: 'POST',
+            const url = `${this.baseUrl}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`,
+                'User-Agent': 'SuperDesign-MCP-Server/1.0.0'
+            };
+
+            logger.info('Making API request for theme generation', {
+                url,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'User-Agent': 'SuperDesign-MCP-Server/1.0.0'
-                },
+                    ...headers,
+                    Authorization: 'Bearer ***' // Mask the token for security
+                }
+            }, 'custom-api');
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
                 body: JSON.stringify({
                     model: this.model,
                     max_tokens: 2000,
@@ -172,8 +247,23 @@ Return the results as valid JSON array with each design having:
                 signal: AbortSignal.timeout(this.timeout)
             });
 
+            logger.info('API response received for theme generation', {
+                status: response.status,
+                statusText: response.statusText,
+                url
+            }, 'custom-api');
+
             if (!response.ok) {
-                throw new Error(`Theme generation failed: ${response.status} ${response.statusText}`);
+                // Try to get error details from response
+                let errorDetails = '';
+                try {
+                    const errorText = await response.text();
+                    errorDetails = `. Response body: ${errorText.substring(0, 200)}`;
+                } catch (e) {
+                    errorDetails = `. Could not read response body: ${e.message}`;
+                }
+
+                throw new Error(`Theme generation failed: ${response.status} ${response.statusText}${errorDetails}`);
             }
 
             const data = await response.json() as any;
@@ -206,13 +296,24 @@ Return the results as valid JSON array with each design having:
 
             const layoutPrompt = this.buildLayoutPrompt(options);
 
-            const response = await fetch(`${this.baseUrl}/v1/messages`, {
-                method: 'POST',
+            const url = `${this.baseUrl}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`,
+                'User-Agent': 'SuperDesign-MCP-Server/1.0.0'
+            };
+
+            logger.info('Making API request for layout generation', {
+                url,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'User-Agent': 'SuperDesign-MCP-Server/1.0.0'
-                },
+                    ...headers,
+                    Authorization: 'Bearer ***' // Mask the token for security
+                }
+            }, 'custom-api');
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
                 body: JSON.stringify({
                     model: this.model,
                     max_tokens: 1500,
@@ -227,8 +328,23 @@ Return the results as valid JSON array with each design having:
                 signal: AbortSignal.timeout(this.timeout)
             });
 
+            logger.info('API response received for layout generation', {
+                status: response.status,
+                statusText: response.statusText,
+                url
+            }, 'custom-api');
+
             if (!response.ok) {
-                throw new Error(`Layout generation failed: ${response.status} ${response.statusText}`);
+                // Try to get error details from response
+                let errorDetails = '';
+                try {
+                    const errorText = await response.text();
+                    errorDetails = `. Response body: ${errorText.substring(0, 200)}`;
+                } catch (e) {
+                    errorDetails = `. Could not read response body: ${e.message}`;
+                }
+
+                throw new Error(`Layout generation failed: ${response.status} ${response.statusText}${errorDetails}`);
             }
 
             const data = await response.json() as any;
@@ -251,8 +367,40 @@ Return the results as valid JSON array with each design having:
         }
     }
 
-    isReady(): boolean {
+    override isReady(): boolean {
         return this.isInitialized;
+    }
+
+    private buildDesignPrompt(prompt: string, options: DesignOptions): string {
+        let designPrompt = `Create a ${options.designType} design for: ${prompt}\n\n`;
+
+        designPrompt += `Requirements:\n`;
+        designPrompt += `- Generate exactly ${options.variations} distinct variations\n`;
+        designPrompt += `- Output format: ${options.outputFormat}\n`;
+        designPrompt += `- Design type: ${options.designType}\n`;
+
+        if (options.theme) {
+            designPrompt += `- Theme: ${options.theme}\n`;
+        }
+
+        if (options.responsive) {
+            designPrompt += `- Must be responsive (mobile, tablet, desktop)\n`;
+        }
+
+        designPrompt += `\nFor each variation, provide:\n`;
+        designPrompt += `1. Complete ${options.outputFormat} code\n`;
+        designPrompt += `2. Embedded styling\n`;
+        designPrompt += `3. Semantic structure\n`;
+        designPrompt += `4. Accessibility attributes\n`;
+
+        if (options.outputFormat === 'html') {
+            designPrompt += `\nReturn the response formatted as:\n`;
+            designPrompt += `### Variation 1:\n\`\`\`html\n[complete HTML code]\n\`\`\`\n\n`;
+            designPrompt += `### Variation 2:\n\`\`\`html\n[complete HTML code]\n\`\`\`\n\n`;
+            designPrompt += `### Variation 3:\n\`\`\`html\n[complete HTML code]\n\`\`\`\n`;
+        }
+
+        return designPrompt;
     }
 
     private parseDesignsFromResponse(response: string, options: DesignOptions, timestamp: string): DesignResult[] {
@@ -265,62 +413,87 @@ Return the results as valid JSON array with each design having:
             const section = sections[i];
             if (!section.trim()) continue;
 
-            const design: DesignResult = {
-                html: '',
-                css: '',
-                framework: options.framework || 'html',
-                description: '',
-                timestamp,
-                variation: i,
-                theme: options.theme || 'default'
-            };
-
             // Extract HTML
             const htmlMatch = section.match(/```html\n([\s\S]*?)\n```/);
-            if (htmlMatch) {
-                design.html = htmlMatch[1].trim();
-            }
-
-            // Extract CSS
             const cssMatch = section.match(/```css\n([\s\S]*?)\n```/);
-            if (cssMatch) {
-                design.css = cssMatch[1].trim();
+
+            let content = '';
+            if (htmlMatch) {
+                content = htmlMatch[1].trim();
+                if (cssMatch) {
+                    // If CSS is separate, embed it in the HTML
+                    content = content.replace('</head>', `  <style>\n${cssMatch[1].trim()}\n  </style>\n</head>`);
+                }
+            } else {
+                // Fallback: extract any code block
+                const codeMatch = section.match(/```\w*\n([\s\S]*?)\n```/);
+                if (codeMatch) {
+                    content = codeMatch[1].trim();
+                } else {
+                    // Last resort: use the entire section
+                    content = section.trim();
+                }
             }
 
-            // Extract description
-            const descMatch = section.match(/### Variation \d+:?\s*([^\n]+)/);
-            if (descMatch) {
-                design.description = descMatch[1].trim();
-            }
+            const design: DesignResult = {
+                id: `design_${i}_${Date.now()}`,
+                name: `${options.designType}_${i}`,
+                content: content,
+                type: options.outputFormat,
+                variation: i,
+                metadata: {
+                    generatedAt: new Date(timestamp),
+                    prompt: '', // Will be filled by caller
+                    theme: options.theme || 'default',
+                    responsive: options.responsive
+                }
+            };
 
-            if (design.html || design.css) {
+            // Only add design if we have content
+            if (design.content) {
                 designs.push(design);
             }
         }
 
         // Fallback: if no variations found, create a single design from the entire response
         if (designs.length === 0) {
+            const htmlMatch = response.match(/```html\n([\s\S]*?)\n```/);
+            const cssMatch = response.match(/```css\n([\s\S]*?)\n```/);
+
+            let content = '';
+            if (htmlMatch) {
+                content = htmlMatch[1].trim();
+                if (cssMatch) {
+                    // If CSS is separate, embed it in the HTML
+                    content = content.replace('</head>', `  <style>\n${cssMatch[1].trim()}\n  </style>\n</head>`);
+                }
+            } else {
+                // Fallback: extract any code block
+                const codeMatch = response.match(/```\w*\n([\s\S]*?)\n```/);
+                if (codeMatch) {
+                    content = codeMatch[1].trim();
+                } else {
+                    // Last resort: use the entire response
+                    content = response.trim();
+                }
+            }
+
             const design: DesignResult = {
-                html: '',
-                css: '',
-                framework: options.framework || 'html',
-                description: 'Generated design',
-                timestamp,
+                id: `design_1_${Date.now()}`,
+                name: `${options.designType}_1`,
+                content: content,
+                type: options.outputFormat,
                 variation: 1,
-                theme: options.theme || 'default'
+                metadata: {
+                    generatedAt: new Date(timestamp),
+                    prompt: '', // Will be filled by caller
+                    theme: options.theme || 'default',
+                    responsive: options.responsive
+                }
             };
 
-            const htmlMatch = response.match(/```html\n([\s\S]*?)\n```/);
-            if (htmlMatch) {
-                design.html = htmlMatch[1].trim();
-            }
-
-            const cssMatch = response.match(/```css\n([\s\S]*?)\n```/);
-            if (cssMatch) {
-                design.css = cssMatch[1].trim();
-            }
-
-            if (design.html || design.css) {
+            // Only add design if we have content
+            if (design.content) {
                 designs.push(design);
             }
         }
@@ -331,12 +504,12 @@ Return the results as valid JSON array with each design having:
     private buildThemePrompt(options: ThemeOptions): string {
         let prompt = `Create a professional CSS theme called "${options.themeName}" with the following specifications:\n\n`;
 
-        if (options.style_reference) {
-            prompt += `Style Reference: ${options.style_reference}\n`;
+        if (options.styleReference) {
+            prompt += `Style Reference: ${options.styleReference}\n`;
         }
 
-        if (options.color_palette && options.color_palette.length > 0) {
-            prompt += `Color Palette: ${options.color_palette.join(', ')}\n`;
+        if (options.colorPalette && options.colorPalette.length > 0) {
+            prompt += `Color Palette: ${options.colorPalette.join(', ')}\n`;
         }
 
         prompt += `\nRequirements:\n`;

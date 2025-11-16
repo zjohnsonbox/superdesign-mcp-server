@@ -86,6 +86,7 @@ export interface DesignResult {
     prompt: string;
     theme?: string;
     responsive: boolean;
+    filePath?: string;
   };
 }
 

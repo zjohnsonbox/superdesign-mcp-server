@@ -48,7 +48,18 @@ export function createGenerateThemeTool(
       return logger.time('info', 'Generating theme', async () => {
         try {
           // Validate input
-          validator.validateInput(params, this.inputSchema);
+          const inputSchema = {
+            type: 'object',
+            properties: {
+              theme_name: { type: 'string' },
+              style_reference: { type: 'string' },
+              color_palette: { type: 'array', items: { type: 'string' } },
+              typography: { type: 'object' },
+              output_path: { type: 'string' }
+            },
+            required: ['theme_name']
+          };
+          validator.validateInput(params, inputSchema);
 
           const {
             theme_name,
@@ -75,8 +86,8 @@ export function createGenerateThemeTool(
           // Prepare theme options
           const themeOptions: ThemeOptions = {
             themeName: sanitizedName,
-            style_reference,
-            color_palette,
+            styleReference: style_reference,
+            colorPalette: color_palette,
             typography,
             outputPath: finalPath
           };

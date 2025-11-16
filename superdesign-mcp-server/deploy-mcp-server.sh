@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # =============================================================================
-# SuperDesign MCP 服务器单用户部署脚本
-# 专为本地 Claude Code CLI 使用设计，支持环境配置和服务管理
+# SuperDesign MCP Server Single-User Deployment Script
+# Designed for local Claude Code CLI use, supporting environment configuration and service management
 # =============================================================================
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,12 +15,12 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# 全局变量
+# Global variables
 DEPLOYMENT_MODE=""
 USERNAME=""
 API_KEY=""
 
-# 打印带颜色的消息
+# Print colored messages
 print_message() {
     echo -e "${GREEN}[DEPLOY]${NC} $1"
 }
@@ -41,7 +41,7 @@ print_header() {
     echo -e "${CYAN}=== $1 ===${NC}"
 }
 
-# 用户确认函数
+# User confirmation function
 confirm_action() {
     local prompt="$1"
     local default="${2:-n}"
@@ -62,81 +62,88 @@ confirm_action() {
     done
 }
 
-# 显示主菜单
+# Show main menu
 show_main_menu() {
     clear
-    print_message "🚀 SuperDesign MCP 服务器部署工具"
+    print_message "🚀 SuperDesign MCP Server Deployment Tool"
     echo ""
-    echo "请选择操作："
-    echo "1) 📋 配置环境变量 (本地使用)"
-    echo "2) ☁️ 云端部署 (单用户)"
-    echo "3) 🚀 启动 MCP 服务器"
-    echo "4) 🧪 运行环境测试"
-    echo "5) 📊 查看系统状态"
-    echo "6) ❌ 退出"
+    echo "Please select an action:"
+    echo "1) 📋 Configure Environment Variables (Local Use)"
+    echo "2) ☁️ Cloud Deployment (Single User)"
+    echo "3) 🚀 Start MCP Server"
+    echo "4) 🧪 Run Environment Tests"
+    echo "5) 📊 View System Status"
+    echo "6) ❌ Exit"
     echo ""
 }
 
-# 环境变量设置功能
+# Environment variable setup function
 setup_environment() {
-    print_header "环境变量配置"
+    print_header "Environment Variable Configuration"
     echo ""
 
-    if ! confirm_action "是否要配置环境变量？这将创建 .env 文件用于本地开发。"; then
-        print_info "已取消环境变量配置"
+    if ! confirm_action "Do you want to configure environment variables? This will create .env file for local development."; then
+        print_info "Environment variable configuration cancelled"
         return
     fi
 
-    print_info "SuperDesign MCP 服务器支持多种大模型提供商，请在 Claude Code 配置中指定您的 API 信息。"
+    print_info "SuperDesign MCP server supports multiple LLM providers, please specify your API information in Claude Code configuration."
     echo ""
 
-    # 本地基础配置
-    read -p "启用文件日志记录 (y/n) [y]: " enable_logging
+    # Local basic configuration
+    read -p "Enable file logging (y/n) [y]: " enable_logging
     if [[ "$enable_logging" =~ ^[Nn]$ ]]; then
         ENABLE_FILE_LOGGING="false"
     else
         ENABLE_FILE_LOGGING="true"
     fi
 
-    read -p "工作空间根目录 [$(pwd)]: " WORKSPACE_ROOT
+    read -p "Workspace root directory [$(pwd)]: " WORKSPACE_ROOT
     WORKSPACE_ROOT=${WORKSPACE_ROOT:-$(pwd)}
 
-    # 创建 .env 文件（仅包含本地配置）
-    print_info "创建 .env 文件..."
+    # Create .env file (only contains local configuration)
+    print_info "Creating .env file..."
 
     cat > .env << EOF
-# SuperDesign MCP 服务器本地配置
-# 生成时间: $(date)
-# 注意: 大模型 API 配置请在 Claude Code 中指定
+# SuperDesign MCP Server Local Configuration
+# Generated at: $(date)
+# Note: LLM API configuration should be specified in Claude Code
 
-# 本地服务器配置
+# Local server configuration
 ENABLE_FILE_LOGGING=$ENABLE_FILE_LOGGING
 SECURITY_MODE=strict
 WORKSPACE_ROOT=$WORKSPACE_ROOT
 
-# 日志和监控
+# Logging configuration
 LOG_LEVEL=info
+LOG_DIR=$WORKSPACE_ROOT/.superdesign/logs
+LOG_FILE_NAME=superdesign-mcp.log
+MAX_LOG_SIZE_MB=10
+LOG_FILE_BACKUPS=5
+ENABLE_CONSOLE_LOGGING=true
+
+# Monitoring
 MONITORING_ENABLED=true
 
-# 性能配置
+# Performance configuration
 MAX_CONCURRENT_REQUESTS=3
 REQUEST_TIMEOUT=120
 ENABLE_COMPRESSION=true
 CACHE_ENABLED=true
 
-# Claude Code 配置示例
-# 在 ~/.claude.json 中添加您的 API 配置:
+# Claude Code configuration example
+# Add your API configuration in ~/.claude.json:
 # "ANTHROPIC_AUTH_TOKEN": "your-api-key-here"
 # "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic"
 # "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6"
 # "AI_PROVIDER": "custom-api"
 EOF
 
-    print_message "✅ 本地环境配置完成！"
-    print_info "配置文件: $(pwd)/.env"
-    print_info "下一步: 在 Claude Code 中配置 MCP 服务器并指定您的 API 信息"
+    print_message "✅ Local environment configuration completed!"
+    print_info "Configuration file: $(pwd)/.env"
+    print_info "Next step: Configure MCP server in Claude Code and specify your API information"
     echo ""
-    print_info "Claude Code 配置示例:"
+    print_info "Claude Code configuration example:"
     echo "{"
     echo "  \"mcpServers\": {"
     echo "    \"superdesign\": {"
@@ -153,350 +160,357 @@ EOF
     echo "    }"
     echo "  }"
     echo "}"
-    print_warning "请勿将 .env 文件提交到版本控制系统"
+    print_warning "Do not commit .env file to version control system"
 }
 
-# 云端部署功能
+# Cloud deployment function
 deploy_to_cloud() {
-    print_header "云端部署配置 (单用户)"
+    print_header "Cloud Deployment Configuration (Single User)"
     echo ""
 
-    if ! confirm_action "是否要进行云端部署？这将安装系统依赖并配置服务。"; then
-        print_info "已取消云端部署"
+    if ! confirm_action "Do you want to perform cloud deployment? This will install system dependencies and configure services."; then
+        print_info "Cloud deployment cancelled"
         return
     fi
 
-    # 检查是否为root用户
+    # Check if running as root
     if [[ $EUID -eq 0 ]]; then
-        print_error "请不要使用root用户运行此脚本！"
+        print_error "Please do not run this script as root user!"
         exit 1
     fi
 
-    print_info "开始云端部署..."
+    print_info "Starting cloud deployment..."
 
-    # 更新系统
-    print_info "更新系统包..."
+    # Update system
+    print_info "Updating system packages..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update -y
         sudo apt-get upgrade -y
     else
-        print_error "不支持的包管理器，目前仅支持 Ubuntu/Debian"
+        print_error "Unsupported package manager, currently only supports Ubuntu/Debian"
         return 1
     fi
 
-    # 安装依赖
-    print_info "安装必要的依赖..."
+    # Install dependencies
+    print_info "Installing necessary dependencies..."
     sudo apt-get install -y curl wget git build-essential
 
-    # 安装 Node.js
+    # Install Node.js
     if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
-        print_info "安装 Node.js 20.x..."
+        print_info "Installing Node.js 20.x..."
         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
         sudo apt-get install -y nodejs
     fi
 
-    # 安装 pm2 和 tsx
+    # Install pm2 and tsx
     if ! command -v pm2 &> /dev/null; then
-        print_info "安装 pm2 进程管理器..."
+        print_info "Installing pm2 process manager..."
         sudo npm install -g pm2
     fi
 
     if ! command -v tsx &> /dev/null; then
-        print_info "安装 tsx TypeScript 运行时..."
+        print_info "Installing tsx TypeScript runtime..."
         sudo npm install -g tsx
     fi
 
-    # 创建项目目录
-    print_info "创建项目目录..."
+    # Create project directory
+    print_info "Creating project directory..."
     CLOUD_DIR="$HOME/superdesign-mcp-server"
     if [ ! -d "$CLOUD_DIR" ]; then
         git clone https://github.com/your-username/superdesign-mcp-server.git "$CLOUD_DIR"
     else
-        print_info "项目目录已存在，更新代码..."
+        print_info "Project directory already exists, updating code..."
         cd "$CLOUD_DIR"
         git pull origin main
     fi
 
-    # 安装项目依赖
-    print_info "安装项目依赖..."
+    # Install project dependencies
+    print_info "Installing project dependencies..."
     cd "$CLOUD_DIR"
     npm install
 
-    # 设置防火墙
-    print_info "设置防火墙规则..."
+    # Setup firewall
+    print_info "Setting up firewall rules..."
     if command -v ufw &> /dev/null; then
         sudo ufw allow 22/tcp
         sudo ufw allow 3001/tcp
-        print_info "已开放端口 22 (SSH) 和 3001 (MCP)"
+        print_info "Opened ports 22 (SSH) and 3001 (MCP)"
     fi
 
-    # 创建云环境配置
-    print_info "创建云端环境配置..."
+    # Create cloud environment configuration
+    print_info "Creating cloud environment configuration..."
     cat > "$CLOUD_DIR/.env" << EOF
-# SuperDesign MCP 服务器云端配置
-# 生成时间: $(date)
+# SuperDesign MCP Server Cloud Configuration
+# Generated at: $(date)
 
-# 本地服务器配置
+# Local server configuration
 ENABLE_FILE_LOGGING=true
 SECURITY_MODE=strict
 WORKSPACE_ROOT=$CLOUD_DIR
 
-# 性能配置
+# Logging configuration
+LOG_LEVEL=info
+LOG_DIR=$CLOUD_DIR/.superdesign/logs
+LOG_FILE_NAME=superdesign-mcp.log
+MAX_LOG_SIZE_MB=50
+LOG_FILE_BACKUPS=10
+ENABLE_CONSOLE_LOGGING=true
+
+# Performance configuration
 MAX_CONCURRENT_REQUESTS=3
 REQUEST_TIMEOUT=120
-LOG_LEVEL=info
 MONITORING_ENABLED=true
 CACHE_ENABLED=true
 EOF
 
-    # 创建启动脚本
-    print_info "创建云端启动脚本..."
+    # Create startup script
+    print_info "Creating cloud startup script..."
     cat > "$CLOUD_DIR/start-cloud.sh" << 'EOF'
 #!/bin/bash
 cd $(dirname "$0")
 source .env
-echo "启动 SuperDesign MCP 云服务器..."
+echo "Starting SuperDesign MCP Cloud Server..."
 pm2 start --name "superdesign-mcp" -- "npx" "tsx" "src/index.ts"
 pm2 save
 pm2 status
 EOF
     chmod +x "$CLOUD_DIR/start-cloud.sh"
 
-    # 创建停止脚本
+    # Create stop script
     cat > "$CLOUD_DIR/stop-cloud.sh" << 'EOF'
 #!/bin/bash
-echo "停止 SuperDesign MCP 云服务器..."
+echo "Stopping SuperDesign MCP Cloud Server..."
 pm2 stop superdesign-mcp
 pm2 delete superdesign-mcp
 EOF
     chmod +x "$CLOUD_DIR/stop-cloud.sh"
 
-    # 创建状态查看脚本
+    # Create status viewing script
     cat > "$CLOUD_DIR/status-cloud.sh" << 'EOF'
 #!/bin/bash
-echo "=== SuperDesign MCP 云服务器状态 ==="
+echo "=== SuperDesign MCP Cloud Server Status ==="
 pm2 list
 echo ""
-echo "日志查看: pm2 logs superdesign-mcp"
-echo "实时监控: pm2 monit"
+echo "View logs: pm2 logs superdesign-mcp"
+echo "Real-time monitoring: pm2 monit"
 EOF
     chmod +x "$CLOUD_DIR/status-cloud.sh"
 
-    print_message "✅ 云端部署完成！"
+    print_message "✅ Cloud deployment completed!"
     echo ""
-    echo "项目位置: $CLOUD_DIR"
+    echo "Project location: $CLOUD_DIR"
     echo ""
-    print_info "下一步操作："
-    echo "1. 配置 Claude Code 连接云端服务器:"
-    echo "   - 使用 SSH 隧道或直接连接"
-    echo "   - 在 Claude Code 中配置 MCP 服务器"
+    print_info "Next steps:"
+    echo "1. Configure Claude Code to connect to cloud server:"
+    echo "   - Use SSH tunnel or direct connection"
+    echo "   - Configure MCP server in Claude Code"
     echo ""
-    echo "2. 管理服务:"
-    echo "   - 启动: $CLOUD_DIR/start-cloud.sh"
-    echo "   - 停止: $CLOUD_DIR/stop-cloud.sh"
-    echo "   - 状态: $CLOUD_DIR/status-cloud.sh"
+    echo "2. Manage services:"
+    echo "   - Start: $CLOUD_DIR/start-cloud.sh"
+    echo "   - Stop: $CLOUD_DIR/stop-cloud.sh"
+    echo "   - Status: $CLOUD_DIR/status-cloud.sh"
     echo ""
-    echo "3. 获取服务器IP:"
-    echo "   - 运行: curl -s ifconfig.me"
+    echo "3. Get server IP:"
+    echo "   - Run: curl -s ifconfig.me"
 
-    # 显示服务器IP
-    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "无法获取外网IP")
-    if [ "$SERVER_IP" != "无法获取外网IP" ]; then
+    # Display server IP
+    SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "Unable to get external IP")
+    if [ "$SERVER_IP" != "Unable to get external IP" ]; then
         echo ""
-        print_info "您的服务器IP: $SERVER_IP"
-        echo "MCP 端口: 3001"
+        print_info "Your server IP: $SERVER_IP"
+        echo "MCP port: 3001"
     fi
 }
 
-# 启动服务器功能
+# Start server function
 start_server() {
-    print_header "启动 MCP 服务器"
+    print_header "Start MCP Server"
     echo ""
 
-    if ! confirm_action "是否要启动 MCP 服务器？"; then
-        print_info "已取消启动服务器"
+    if ! confirm_action "Do you want to start MCP server?"; then
+        print_info "Server startup cancelled"
         return
     fi
 
-    # 检查项目文件
+    # Check project files
     if [ ! -f "src/index.ts" ]; then
-        print_error "未找到 src/index.ts 文件，请确保在正确的项目目录中"
+        print_error "src/index.ts file not found, please ensure you are in the correct project directory"
         return 1
     fi
 
-    # 检查 tsx 安装
+    # Check tsx installation
     if ! command -v tsx &> /dev/null; then
-        print_info "安装 tsx TypeScript 运行时..."
+        print_info "Installing tsx TypeScript runtime..."
         npm install -g tsx
     fi
 
-    print_info "SuperDesign MCP 服务器将在后台运行，请在 Claude Code 中配置使用。"
+    print_info "SuperDesign MCP server will run in the background, please configure it in Claude Code."
     echo ""
 
-    print_info "配置提醒："
-    echo "1. 确保已在 Claude Code 中添加 MCP 服务器配置"
-    echo "2. 在配置中指定您的 API 密钥和模型信息"
-    echo "3. 重启 Claude Code 以加载 MCP 服务器"
+    print_info "Configuration reminder:"
+    echo "1. Ensure MCP server configuration has been added in Claude Code"
+    echo "2. Specify your API key and model information in the configuration"
+    echo "3. Restart Claude Code to load MCP server"
     echo ""
 
-    print_info "启动 MCP 服务器..."
+    print_info "Starting MCP server..."
 
-    # 启动服务器
+    # Start server
     exec npx tsx src/index.ts
 }
 
-# 运行测试功能
+# Run test function
 run_tests() {
-    print_header "运行综合测试"
+    print_header "Run Comprehensive Tests"
     echo ""
 
-    if ! confirm_action "是否要运行综合测试？这将检查服务器状态和功能。"; then
-        print_info "已取消测试"
+    if ! confirm_action "Do you want to run comprehensive tests? This will check server status and functionality."; then
+        print_info "Test cancelled"
         return
     fi
 
-    print_info "开始综合测试..."
+    print_info "Starting comprehensive tests..."
 
-    # 基础环境测试
+    # Basic environment tests
     local passed=0
     local total=0
 
-    # 检查 Node.js
+    # Check Node.js
     total=$((total + 1))
     if command -v node &> /dev/null; then
         node_version=$(node --version)
-        print_message "✅ Node.js 版本: $node_version"
+        print_message "✅ Node.js version: $node_version"
         passed=$((passed + 1))
     else
-        print_error "❌ Node.js 未安装"
+        print_error "❌ Node.js not installed"
     fi
 
-    # 检查 npm
+    # Check npm
     total=$((total + 1))
     if command -v npm &> /dev/null; then
         npm_version=$(npm --version)
-        print_message "✅ npm 版本: $npm_version"
+        print_message "✅ npm version: $npm_version"
         passed=$((passed + 1))
     else
-        print_error "❌ npm 未安装"
+        print_error "❌ npm not installed"
     fi
 
-    # 检查 tsx
+    # Check tsx
     total=$((total + 1))
     if command -v tsx &> /dev/null; then
-        print_message "✅ tsx 运行时已安装"
+        print_message "✅ tsx runtime installed"
         passed=$((passed + 1))
     else
-        print_error "❌ tsx 未安装，运行: npm install -g tsx"
+        print_error "❌ tsx not installed, run: npm install -g tsx"
     fi
 
-    # 检查项目文件
+    # Check project files
     total=$((total + 1))
     if [ -f "src/index.ts" ]; then
-        print_message "✅ 项目源码存在"
+        print_message "✅ Project source code exists"
         passed=$((passed + 1))
     else
-        print_error "❌ 项目源码不存在"
+        print_error "❌ Project source code does not exist"
     fi
 
-    # 检查环境变量
+    # Check environment variables
     total=$((total + 1))
     if [ -f ".env" ]; then
-        print_message "✅ 环境配置文件存在"
+        print_message "✅ Environment configuration file exists"
         passed=$((passed + 1))
 
-        # 检查必要变量
+        # Check required variables
         if grep -q "ANTHROPIC_BASE_URL=" .env && grep -q "AI_PROVIDER=" .env; then
-            print_message "✅ 环境变量配置完整"
+            print_message "✅ Environment variable configuration complete"
         else
-            print_warning "⚠️ 环境变量配置不完整"
+            print_warning "⚠️ Environment variable configuration incomplete"
         fi
     else
-        print_error "❌ 环境配置文件不存在"
+        print_error "❌ Environment configuration file does not exist"
     fi
 
-    # 生成测试报告
+    # Generate test report
     local success_rate=0
     if [ $total -gt 0 ]; then
         success_rate=$((passed * 100 / total))
     fi
 
     echo ""
-    print_header "测试结果"
-    print_info "通过测试: $passed/$total ($success_rate%)"
+    print_header "Test Results"
+    print_info "Tests passed: $passed/$total ($success_rate%)"
 
     if [ $success_rate -ge 80 ]; then
-        print_message "🎉 测试通过！系统基本正常。"
+        print_message "🎉 Tests passed! System is basically normal."
     else
-        print_warning "⚠️ 测试发现问题，请检查上述错误。"
+        print_warning "⚠️ Tests found problems, please check the errors above."
     fi
 }
 
-# 查看状态功能
+# View status function
 show_status() {
-    print_header "系统状态检查"
+    print_header "System Status Check"
     echo ""
 
-    # 系统信息
-    print_info "系统环境:"
-    echo "  操作系统: $(uname -s) $(uname -r)"
-    echo "  Node.js: $(node --version 2>/dev/null || echo '未安装')"
-    echo "  npm: $(npm --version 2>/dev/null || echo '未安装')"
-    echo "  tsx: $(tsx --version 2>/dev/null || echo '未安装')"
+    # System information
+    print_info "System environment:"
+    echo "  Operating System: $(uname -s) $(uname -r)"
+    echo "  Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
+    echo "  npm: $(npm --version 2>/dev/null || echo 'Not installed')"
+    echo "  tsx: $(tsx --version 2>/dev/null || echo 'Not installed')"
     echo ""
 
-    # 项目文件状态
-    print_info "项目文件状态:"
+    # Project file status
+    print_info "Project file status:"
     if [ -f ".env" ]; then
-        print_message "✅ 本地环境配置文件存在"
+        print_message "✅ Local environment configuration file exists"
     else
-        print_warning "⚠️ 本地环境配置文件不存在 (可运行选项1创建)"
+        print_warning "⚠️ Local environment configuration file does not exist (run option 1 to create)"
     fi
 
     if [ -f "src/index.ts" ]; then
-        print_message "✅ MCP 服务器源码存在"
+        print_message "✅ MCP server source code exists"
     else
-        print_error "❌ MCP 服务器源码不存在"
+        print_error "❌ MCP server source code does not exist"
     fi
 
     if [ -f "package.json" ]; then
-        print_message "✅ 项目配置文件存在"
+        print_message "✅ Project configuration file exists"
     else
-        print_error "❌ 项目配置文件不存在"
+        print_error "❌ Project configuration file does not exist"
     fi
 
-    # 依赖检查
+    # Dependency check
     if [ -d "node_modules" ]; then
-        print_message "✅ 依赖已安装"
+        print_message "✅ Dependencies installed"
     else
-        print_warning "⚠️ 依赖未安装 (运行: npm install)"
+        print_warning "⚠️ Dependencies not installed (run: npm install)"
     fi
 
     echo ""
-    print_info "使用说明:"
-    echo "1. 配置环境: 选项 1 - 创建本地配置文件"
-    echo "2. 配置 Claude Code: 在 ~/.claude.json 中添加 MCP 服务器"
-    echo "3. 启动服务器: 选项 2 - 启动 MCP 服务器"
-    echo "4. 重启 Claude Code: 以加载 MCP 服务器"
+    print_info "Usage instructions:"
+    echo "1. Configure environment: Option 1 - Create local configuration file"
+    echo "2. Configure Claude Code: Add MCP server in ~/.claude.json"
+    echo "3. Start server: Option 3 - Start MCP server"
+    echo "4. Restart Claude Code: to load MCP server"
 }
 
-# 主函数
+# Main function
 main() {
     while true; do
         show_main_menu
 
-        read -p "请选择操作 (1-6): " choice
+        read -p "Please select an action (1-6): " choice
 
         case $choice in
             1)
                 setup_environment
                 echo ""
-                read -p "按回车键继续..."
+                read -p "Press Enter to continue..."
                 ;;
             2)
                 deploy_to_cloud
                 echo ""
-                read -p "按回车键继续..."
+                read -p "Press Enter to continue..."
                 ;;
             3)
                 start_server
@@ -505,24 +519,24 @@ main() {
             4)
                 run_tests
                 echo ""
-                read -p "按回车键继续..."
+                read -p "Press Enter to continue..."
                 ;;
             5)
                 show_status
                 echo ""
-                read -p "按回车键继续..."
+                read -p "Press Enter to continue..."
                 ;;
             6)
-                print_message "👋 退出部署工具"
+                print_message "👋 Exit deployment tool"
                 exit 0
                 ;;
             *)
-                print_error "无效选择，请输入 1-6"
+                print_error "Invalid choice, please enter 1-6"
                 sleep 1
                 ;;
         esac
     done
 }
 
-# 运行主函数
+# Run main function
 main "$@"

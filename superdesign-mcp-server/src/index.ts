@@ -34,6 +34,8 @@ class SuperDesignMCPServer {
   private validator!: SecurityValidator;
   private providerFactory!: ProviderFactory;
   private workspaceRoot!: string;
+  private connectionCount: number = 0;
+  private lastConnectionTime: string = '';
 
   constructor() {
     this.server = new Server({
@@ -61,9 +63,39 @@ class SuperDesignMCPServer {
   }
 
   private setupHandlers(): void {
+    // The MCP SDK automatically handles the initialize request
+    // We'll log connections in the ListToolsRequestSchema handler which is called after initialization
+
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       try {
+        // Increment connection count and update last connection time
+        this.connectionCount++;
+        this.lastConnectionTime = new Date().toISOString();
+
+        console.error('[SUPERDESIGN-MCP] Client requesting tools list', {
+          connectionCount: this.connectionCount,
+          connectionTime: this.lastConnectionTime,
+          timestamp: new Date().toISOString()
+        });
+
+        logger.info('Client requesting tools list', {
+          connectionCount: this.connectionCount,
+          connectionTime: this.lastConnectionTime
+        }, 'server');
+
+        console.error('[SUPERDESIGN-MCP] Client connection established', {
+          connectionCount: this.connectionCount,
+          connectionTime: this.lastConnectionTime,
+          timestamp: new Date().toISOString()
+        });
+
+        logger.info('Client connected to MCP server', {
+          connectionCount: this.connectionCount,
+          connectionTime: this.lastConnectionTime,
+          clientInfo: 'Claude Code CLI or other MCP client'
+        }, 'server');
+
         console.error('[SUPERDESIGN-MCP] Tools list requested');
 
         const tools = [
@@ -140,11 +172,16 @@ class SuperDesignMCPServer {
         console.error('[SUPERDESIGN-MCP] Tool call received:', {
           tool: name,
           args: args,
-          timestamp: new Date().toISOString(),
-          requestId: request.id
+          connectionCount: this.connectionCount,
+          timestamp: new Date().toISOString()
         });
 
-        logger.info('Tool call received', { name, args }, 'server');
+        logger.info('Tool call received', {
+          name,
+          args,
+          connectionCount: this.connectionCount,
+          timeSinceConnection: this.lastConnectionTime
+        }, 'server');
 
         // Get current provider and ensure it's ready
         const provider = this.providerFactory.getCurrentProvider();
@@ -209,7 +246,7 @@ class SuperDesignMCPServer {
           ),
         };
 
-        // Get the requested tool
+        // Get the requested tool with type safety
         const tool = tools[name as keyof typeof tools];
         if (!tool) {
           throw new McpError(
@@ -218,10 +255,29 @@ class SuperDesignMCPServer {
           );
         }
 
-        // Execute the tool
+        // Validate tool has execute method
+        if (typeof (tool as { execute?: Function }).execute !== 'function') {
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Tool "${name}" is not properly configured: missing execute method`
+          );
+        }
+
+        // Execute the tool with proper type safety
         console.error('[SUPERDESIGN-MCP] Executing tool:', name);
         const startTime = Date.now();
-        const result = await (tool as any).execute(args);
+
+        let result;
+        try {
+          result = await (tool as { execute: (args: any) => Promise<any> }).execute(args);
+        } catch (executeError) {
+          console.error('[SUPERDESIGN-MCP] Tool execution error:', {
+            tool: name,
+            error: executeError instanceof Error ? executeError.message : String(executeError)
+          });
+          throw executeError;
+        }
+
         const executionTime = Date.now() - startTime;
 
         console.error('[SUPERDESIGN-MCP] Tool execution completed:', {
@@ -336,7 +392,18 @@ class SuperDesignMCPServer {
         ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
         ANTHROPIC_DEFAULT_SONNET_MODEL: process.env.ANTHROPIC_DEFAULT_SONNET_MODEL,
         AI_PROVIDER: process.env.AI_PROVIDER,
-        WORKSPACE_ROOT: process.env.WORKSPACE_ROOT
+        WORKSPACE_ROOT: process.env.WORKSPACE_ROOT,
+        SECURITY_MODE: process.env.SECURITY_MODE,
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? '***-SET' : 'NOT-SET',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '***-SET' : 'NOT-SET',
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '***-SET' : 'NOT-SET',
+        CLAUDE_CODE_PATH: process.env.CLAUDE_CODE_PATH,
+        ANTHROPIC_DEFAULT_OPUS_MODEL: process.env.ANTHROPIC_DEFAULT_OPUS_MODEL,
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+        NODE_ENV: process.env.NODE_ENV,
+        LOG_LEVEL: process.env.LOG_LEVEL,
+        LOG_DIR: process.env.LOG_DIR,
+        ENABLE_FILE_LOGGING: process.env.ENABLE_FILE_LOGGING
       });
 
       logger.info('Starting SuperDesign MCP Server...', undefined, 'server');
@@ -376,9 +443,15 @@ class SuperDesignMCPServer {
     try {
       logger.info('Cleaning up...', undefined, 'server');
 
-      // Get final statistics
+      // Get final statistics including connection info
       const stats = logger.getStats();
-      logger.info('Final server statistics', stats, 'server');
+      logger.info('Final server statistics', {
+        ...stats,
+        totalConnections: this.connectionCount,
+        lastConnectionTime: this.lastConnectionTime,
+        workspaceRoot: this.workspaceRoot,
+        aiProvider: this.config.aiProvider
+      }, 'server');
 
       // Close server connection if open
       if (this.server) {

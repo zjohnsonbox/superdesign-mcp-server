@@ -222,9 +222,9 @@ async function getProjectStatus(projectPath: string): Promise<MCPToolResult> {
             `- Themes: ${themeFiles.length} files\n` +
             `- Layouts: ${layoutFiles.length} files\n\n` +
             `**⚙️ Configuration:**\n` +
-            `- Theme: ${projectConfig.theme || 'Default'}\n` +
-            `- Output Format: ${projectConfig.outputFormat || 'HTML'}\n` +
-            `- Responsive: ${projectConfig.responsive !== false ? 'Enabled' : 'Disabled'}\n\n` +
+            `- Theme: ${(projectConfig as any).theme || 'Default'}\n` +
+            `- Output Format: ${(projectConfig as any).outputFormat || 'HTML'}\n` +
+            `- Responsive: ${(projectConfig as any).responsive !== false ? 'Enabled' : 'Disabled'}\n\n` +
             `${designFiles.length > 0 ? `**🎨 Recent Designs:**\n${designFiles.slice(-3).map(f => `- ${f.name}`).join('\n')}\n\n` : ''}` +
             `${themeFiles.length > 0 ? `**🎨 Available Themes:**\n${themeFiles.slice(-3).map(f => `- ${f.name}`).join('\n')}\n\n` : ''}` +
             `**📂 Directory Structure:**\n` +

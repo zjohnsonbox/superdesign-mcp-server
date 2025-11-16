@@ -190,7 +190,7 @@ export function createGrepTool(
                 break;
               }
             } catch (error) {
-              logger.warn(`Failed to search in ${filePath}: ${error.message}`, 'grep');
+              logger.warn(`Failed to search in ${filePath}: ${error.message}`, { filePath, error: error.message }, 'grep');
             }
           }
 

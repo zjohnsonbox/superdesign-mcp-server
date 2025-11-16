@@ -64,7 +64,21 @@ export function createGenerateDesignTool(
       return logger.time('info', 'Generating design', async () => {
         try {
           // Validate input
-          validator.validateInput(params, this.inputSchema);
+          const inputSchema = {
+            type: 'object',
+            properties: {
+              prompt: { type: 'string', minLength: 5, maxLength: 1000 },
+              variations: { type: 'number', default: 3, minimum: 1, maximum: 3 },
+              design_type: { type: 'string', enum: ['mockup', 'component', 'wireframe', 'full_page'], default: 'mockup' },
+              output_format: { type: 'string', enum: ['html', 'react', 'vue', 'svelte'], default: 'html' },
+              theme: { type: 'string' },
+              responsive: { type: 'boolean', default: true },
+              project_path: { type: 'string' }
+            },
+            required: ['prompt'],
+            additionalProperties: false
+          };
+          validator.validateInput(params, inputSchema);
 
           const {
             prompt,

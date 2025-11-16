@@ -76,7 +76,50 @@ export function createGlobTool(
       return logger.time('info', 'Glob search', async () => {
         try {
           // Validate input
-          validator.validateInput(params, this.inputSchema);
+          const inputSchema = {
+            type: 'object',
+            properties: {
+              pattern: {
+                type: 'string',
+                description: 'Glob pattern to match files (e.g., "**/*.ts", "src/**/*.{js,jsx}", "*.json")'
+              },
+              base_path: {
+                type: 'string',
+                description: 'Base directory for search (relative to workspace root or absolute)',
+                default: '.'
+              },
+              include_files: {
+                type: 'boolean',
+                description: 'Include files in results',
+                default: true
+              },
+              include_directories: {
+                type: 'boolean',
+                description: 'Include directories in results',
+                default: false
+              },
+              max_results: {
+                type: 'number',
+                description: 'Maximum number of results to return',
+                minimum: 1,
+                maximum: 1000,
+                default: 100
+              },
+              exclude_patterns: {
+                type: 'array',
+                description: 'Patterns to exclude from results',
+                items: { type: 'string' },
+                default: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**']
+              },
+              case_sensitive: {
+                type: 'boolean',
+                description: 'Whether the pattern should be case sensitive',
+                default: false
+              }
+            },
+            required: ['pattern']
+          };
+          validator.validateInput(params, inputSchema);
 
           const {
             pattern,
@@ -104,10 +147,9 @@ export function createGlobTool(
             cwd: validatedBasePath,
             nodir: !include_directories,
             nosort: false,
-            absolute: false,
+            absolute: true,
             ignore: exclude_patterns,
-            maxResults: max_results,
-            withFileTypes: true
+            maxResults: max_results
           };
 
           // Make pattern case-insensitive if requested
@@ -121,8 +163,16 @@ export function createGlobTool(
           // Process matches and get file info
           const processedMatches = [];
           for (const match of matches) {
+            let relativePath: string;
+              if (typeof match === 'string') {
+                relativePath = match;
+              } else if (match && typeof match === 'object' && 'relative' in match) {
+                relativePath = (match as any).relative || match;
+              } else {
+                relativePath = String(match);
+              }
             try {
-              const fullPath = validator.resolvePath(match.relative(), validatedBasePath);
+              const fullPath = validator.validatePath(relativePath, validatedBasePath);
               const fileInfo = await FileUtils.getFileInfo(fullPath);
 
               // Filter by file/directory type
@@ -130,13 +180,13 @@ export function createGlobTool(
               if (fileInfo.type === 'directory' && !include_directories) continue;
 
               processedMatches.push({
-                path: match.relative(),
+                path: relativePath,
                 type: fileInfo.type as 'file' | 'directory',
                 size: fileInfo.size || 0,
                 lastModified: fileInfo.lastModified || new Date().toISOString()
               });
             } catch (error) {
-              logger.warn(`Failed to get info for ${match.relative()}: ${error.message}`, 'glob');
+              logger.warn(`Failed to get info for ${relativePath}: ${error.message}`, { path: relativePath, error: error.message }, 'glob');
             }
           }
 

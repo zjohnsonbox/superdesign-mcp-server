@@ -1,50 +1,50 @@
-# SuperDesign MCP Server 安装指南
+# SuperDesign MCP Server Installation Guide
 
-这个指南将帮助你快速将 SuperDesign MCP 服务器安装到你的 Claude Code CLI 中。
+This guide will help you quickly install the SuperDesign MCP server into your Claude Code CLI.
 
-## 🚀 快速安装
+## 🚀 Quick Installation
 
-### 方法一：使用自动化脚本（推荐）
+### Method 1: Using Automated Script (Recommended)
 
-1. 确保你在 `superdesign-mcp-server` 目录中：
+1. Ensure you are in the `superdesign-mcp-server` directory:
    ```bash
    cd path/to/superdesign-mcp-server
    ```
 
-2. 运行安装脚本：
+2. Run the installation script:
    ```bash
    ./add-mcp-into-claude-code-cli.sh
    ```
 
-脚本会自动完成以下操作：
-- ✅ 检查 Node.js 和 npm 安装
-- ✅ 检查 Claude Code CLI 安装
-- ✅ 安装项目依赖
-- ✅ 全局安装 tsx（如果尚未安装）
-- ✅ 移除现有的 SuperDesign 配置
-- ✅ 添加新的 SuperDesign MCP 服务器
-- ✅ 验证安装并显示详细信息
+The script will automatically complete the following operations:
+- ✅ Check Node.js and npm installation
+- ✅ Check Claude Code CLI installation
+- ✅ Install project dependencies
+- ✅ Install tsx globally (if not already installed)
+- ✅ Remove existing SuperDesign configuration
+- ✅ Add new SuperDesign MCP server
+- ✅ Verify installation and display detailed information
 
-### 方法二：手动安装
+### Method 2: Manual Installation
 
-如果你更喜欢手动安装，可以按以下步骤操作：
+If you prefer manual installation, you can follow these steps:
 
-1. **安装依赖**：
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. **安装 tsx**（如果尚未安装）：
+2. **Install tsx** (if not already installed):
    ```bash
    npm install -g tsx
    ```
 
-3. **移除现有配置**（可选）：
+3. **Remove existing configuration** (optional):
    ```bash
    claude mcp remove superdesign -s user
    ```
 
-4. **添加 MCP 服务器**：
+4. **Add MCP server**:
    ```bash
    claude mcp add --transport stdio --scope user superdesign \
      --env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
@@ -53,32 +53,32 @@
      npx tsx ./src/index.ts
    ```
 
-5. **验证安装**：
+5. **Verify installation**:
    ```bash
    claude mcp list
    claude mcp get superdesign
    ```
 
-## 📋 系统要求
+## 📋 System Requirements
 
 - **Node.js**: >= 18.0.0
-- **npm**: 最新版本
-- **Claude Code CLI**: 已安装并配置
-- **操作系统**: macOS, Linux, Windows (WSL)
+- **npm**: Latest version
+- **Claude Code CLI**: Installed and configured
+- **Operating System**: macOS, Linux, Windows (WSL)
 
-## 🔍 验证安装
+## 🔍 Verify Installation
 
-安装完成后，你可以运行以下命令验证：
+After installation is complete, you can run the following commands to verify:
 
 ```bash
-# 列出所有 MCP 服务器
+# List all MCP servers
 claude mcp list
 
-# 查看 SuperDesign 详细配置
+# View SuperDesign detailed configuration
 claude mcp get superdesign
 ```
 
-你应该看到类似这样的输出：
+You should see output similar to this:
 ```
 superdesign:
   Scope: User config (available in all your projects)
@@ -92,84 +92,84 @@ superdesign:
     WORKSPACE_ROOT=/path/to/superdesign-mcp-server
 ```
 
-## 🛠️ 可用工具
+## 🛠️ Available Tools
 
-SuperDesign MCP 服务器提供以下工具：
+SuperDesign MCP server provides the following tools:
 
-| 工具名称 | 描述 |
+| Tool Name | Description |
 |---------|------|
-| `generate_design` | 生成 UI 设计、模型和组件 |
-| `create_layout` | 创建布局设计 |
-| `generate_theme` | 生成设计主题 |
-| `manage_project` | 管理设计项目 |
-| `read_file` | 读取文件 |
-| `write_file` | 写入文件 |
-| `edit_file` | 编辑文件 |
-| `glob_tool` | 文件模式搜索 |
-| `grep_tool` | 文本搜索 |
-| `preview_design` | 预览设计 |
-| `list_designs` | 列出现有设计 |
+| `generate_design` | Generate UI designs, models and components |
+| `create_layout` | Create layout designs |
+| `generate_theme` | Generate design themes |
+| `manage_project` | Manage design projects |
+| `read_file` | Read files |
+| `write_file` | Write files |
+| `edit_file` | Edit files |
+| `glob_tool` | File pattern search |
+| `grep_tool` | Text search |
+| `preview_design` | Preview designs |
+| `list_designs` | List existing designs |
 
-## 🚨 故障排除
+## 🚨 Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **Node.js 版本过低**：
+1. **Node.js version too low**:
    ```bash
-   # 检查版本
+   # Check version
    node --version
 
-   # 如果版本低于 18，请升级 Node.js
+   # If version is below 18, please upgrade Node.js
    ```
 
-2. **Claude Code CLI 未找到**：
+2. **Claude Code CLI not found**:
    ```bash
-   # 确保 claude 在 PATH 中
+   # Ensure claude is in PATH
    which claude
 
-   # 如果未找到，请重新安装 Claude Code CLI
+   # If not found, please reinstall Claude Code CLI
    ```
 
-3. **MCP 服务器连接失败**：
+3. **MCP server connection failed**:
    ```bash
-   # 检查日志
+   # Check logs
    claude mcp list
 
-   # 重新添加服务器
+   # Re-add server
    claude mcp remove superdesign -s user
    ./add-mcp-into-claude-code-cli.sh
    ```
 
-4. **依赖安装失败**：
+4. **Dependency installation failed**:
    ```bash
-   # 清理并重新安装
+   # Clean and reinstall
    rm -rf node_modules package-lock.json
    npm install
    ```
 
-### 手动调试
+### Manual Debugging
 
-如果自动脚本失败，你可以手动调试每个步骤：
+If the automatic script fails, you can manually debug each step:
 
 ```bash
-# 1. 检查目录
+# 1. Check directory
 pwd
 ls -la package.json src/
 
-# 2. 检查 Node.js/npm
+# 2. Check Node.js/npm
 node --version
 npm --version
 
-# 3. 检查 Claude CLI
+# 3. Check Claude CLI
 claude --version
 
-# 4. 安装依赖
+# 4. Install dependencies
 npm install
 
-# 5. 测试 tsx
+# 5. Test tsx
 npx tsx --version
 
-# 6. 手动添加 MCP
+# 6. Manually add MCP
 claude mcp add --transport stdio --scope user superdesign \
   --env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
   --env WORKSPACE_ROOT="$(pwd)" \
@@ -177,45 +177,93 @@ claude mcp add --transport stdio --scope user superdesign \
   npx tsx ./src/index.ts
 ```
 
-## 🔄 更新和卸载
+## 🔄 Update and Uninstall
 
-### 更新 SuperDesign
+### Update SuperDesign
 
-1. 更新代码：
+1. Update code:
    ```bash
    git pull origin main
    ```
 
-2. 重新运行安装脚本：
+2. Run installation script again:
    ```bash
    ./add-mcp-into-claude-code-cli.sh
    ```
 
-### 完全卸载
+### Complete Uninstall
 
 ```bash
-# 移除 MCP 服务器配置
+# Remove MCP server configuration
 claude mcp remove superdesign -s user
 
-# 可选：删除项目文件
+# Optional: Delete project files
 cd ..
 rm -rf superdesign-mcp-server
 ```
 
-## 📞 支持
+## 📞 Support
 
-如果遇到问题：
+If you encounter problems:
 
-1. 查看 [GitHub Issues](https://github.com/superdesigndev/superdesign-mcp-server/issues)
-2. 加入 [Discord 社区](https://discord.gg/FYr49d6cQ9)
-3. 检查 [项目文档](https://github.com/superdesigndev/superdesign-mcp-server)
+1. Check [GitHub Issues](https://github.com/superdesigndev/superdesign-mcp-server/issues)
+2. Join [Discord Community](https://discord.gg/FYr49d6cQ9)
+3. Check [Project Documentation](https://github.com/superdesigndev/superdesign-mcp-server)
 
-## 🎉 开始使用
+## 🎉 Getting Started
 
-安装完成后，你就可以在任何 Claude Code CLI 会话中使用 SuperDesign 的 AI 设计功能了！试试说：
+After installation is complete, you can use SuperDesign's AI design features in any Claude Code CLI session! Try saying:
 
-- "生成一个现代登录页面设计"
-- "创建一个响应式的导航栏组件"
-- "设计一个移动端的设置界面"
+- "Generate a modern login page design"
+- "Create a responsive navigation bar component"
+- "Design a mobile settings interface"
 
-祝你使用愉快！🎨
+## 📋 Logging and Troubleshooting
+
+SuperDesign MCP server automatically logs all activities for debugging and monitoring:
+
+### Log File Location
+- **Default log file**: `~/.superdesign/logs/superdesign-mcp.log`
+- **Log directory**: `~/.superdesign/logs/` (auto-created)
+
+### Viewing Logs
+```bash
+# View live logs in real-time
+tail -f ~/.superdesign/logs/superdesign-mcp.log
+
+# View recent logs
+tail -n 50 ~/.superdesign/logs/superdesign-mcp.log
+
+# Search for errors
+grep "ERROR" ~/.superdesign/logs/superdesign-mcp.log
+
+# Search for specific operations
+grep "generate_design" ~/.superdesign/logs/superdesign-mcp.log
+
+# Check logging status with MCP tool
+claude 'get_logging_status'
+```
+
+### Log Levels
+Configure logging verbosity in your `.env` file:
+```bash
+LOG_LEVEL=debug    # Most verbose - for troubleshooting
+LOG_LEVEL=info     # Normal operation information
+LOG_LEVEL=warn     # Warnings and above only
+LOG_LEVEL=error    # Errors only
+```
+
+### MCP Server Status
+Check MCP server connection and recent activity:
+```bash
+claude mcp list
+claude mcp get superdesign
+```
+
+### Common Log Messages
+- `INFO`: Normal operation messages
+- `WARN`: Non-critical issues (e.g., slow API responses)
+- `ERROR`: Critical issues (e.g., API failures, file access errors)
+- `DEBUG`: Detailed troubleshooting information
+
+Happy designing! 🎨

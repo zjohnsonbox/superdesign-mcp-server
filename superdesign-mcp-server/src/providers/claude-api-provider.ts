@@ -47,17 +47,49 @@ export class ClaudeApiProvider extends AIProvider {
             // Setup working directory first
             await this.setupWorkingDirectory();
 
-            // Check if API key is configured
+            // Enhanced API key validation
             const apiKey = this.config.apiKey || process.env.ANTHROPIC_API_KEY;
 
+            // Validate API key properly
             if (!apiKey) {
                 const errorMsg = 'No API key found. Please set ANTHROPIC_API_KEY environment variable or provide apiKey in config.';
-                logger.warn(errorMsg, { provider: 'claude-api' });
+                logger.error(errorMsg, { provider: 'claude-api' });
                 throw new Error(errorMsg);
             }
 
+            if (typeof apiKey !== 'string') {
+                const errorMsg = 'API key must be a string.';
+                logger.error(errorMsg, { provider: 'claude-api', apiKeyType: typeof apiKey });
+                throw new Error(errorMsg);
+            }
+
+            const trimmedApiKey = apiKey.trim();
+            if (trimmedApiKey.length === 0) {
+                const errorMsg = 'API key cannot be empty.';
+                logger.error(errorMsg, { provider: 'claude-api', keyLength: apiKey.length });
+                throw new Error(errorMsg);
+            }
+
+            // Basic format validation for API keys (support custom providers)
+            // Only validate format if it looks like an Anthropic key
+            if (trimmedApiKey.startsWith('sk-') && !trimmedApiKey.startsWith('sk-ant-') && !trimmedApiKey.startsWith('sk-ori-')) {
+                const errorMsg = 'Invalid Anthropic API key format. Expected key to start with sk-ant- or sk-ori- for Anthropic API.';
+                logger.warn(errorMsg, {
+                    provider: 'claude-api',
+                    keyPrefix: trimmedApiKey.substring(0, 10) + '...',
+                    keyLength: trimmedApiKey.length
+                });
+                // For custom API providers, allow non-standard keys but log warning
+                const baseUrl = process.env.ANTHROPIC_BASE_URL;
+                if (baseUrl && baseUrl !== 'https://api.anthropic.com') {
+                    logger.info('Using custom API provider with non-standard key format', { provider: 'claude-api', baseUrl });
+                } else {
+                    throw new Error(errorMsg);
+                }
+            }
+
             // Set the environment variable for Claude Code SDK
-            process.env.ANTHROPIC_API_KEY = apiKey;
+            process.env.ANTHROPIC_API_KEY = trimmedApiKey;
 
             // Import Claude Code SDK
             logger.info('Importing Claude Code SDK...', { provider: 'claude-api' });

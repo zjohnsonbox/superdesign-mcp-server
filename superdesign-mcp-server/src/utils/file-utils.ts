@@ -1,9 +1,32 @@
-import fs from 'fs/promises';
-import path from 'path';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { createReadStream } from 'fs';
 import { FileInfo, FileContent } from '../types/mcp-types.js';
 
 export class FileUtils {
+  /**
+   * Get MIME type based on file extension
+   */
+  static getMimeType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.json': 'application/json',
+      '.txt': 'text/plain',
+      '.md': 'text/markdown',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf',
+      '.zip': 'application/zip'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
+  }
+
   /**
    * Check if a file or directory exists
    */
@@ -263,10 +286,11 @@ export class FileUtils {
    */
   static async isBinaryFile(filePath: string): Promise<boolean> {
     try {
-      const buffer = Buffer.alloc(512);
-      const fd = await fs.open(filePath, 'r');
-      const { bytesRead } = await fs.read(fd, buffer, 0, 512, 0);
-      await fs.close(fd);
+      // Read first 512 bytes to check for binary content
+      const fileHandle = await fs.open(filePath, 'r');
+      const buffer = new Uint8Array(512);
+      const { bytesRead } = await fileHandle.read(buffer, 0, 512);
+      await fileHandle.close();
 
       if (bytesRead === 0) return false;
 

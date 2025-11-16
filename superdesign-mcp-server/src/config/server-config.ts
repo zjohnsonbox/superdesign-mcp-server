@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG: MCPServerConfig = {
   designsOutputDir: '.superdesign/design_iterations',
 
   // Project Configuration
-  workspaceRoot: process.cwd(),
+  workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd(),
   superdesignDir: '.superdesign',
   themesOutputDir: '.superdesign/themes',
   designSystemOutputDir: '.superdesign/design_system',

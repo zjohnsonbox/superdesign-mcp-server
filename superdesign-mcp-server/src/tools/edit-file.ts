@@ -131,7 +131,7 @@ export function createEditFileTool(
           if (create_backup) {
             const backupPath = `${validatedPath}.backup.${Date.now()}`;
             await FileUtils.copyPath(validatedPath, backupPath);
-            logger.info(`Created backup: ${backupPath}`, 'edit_file');
+            logger.info(`Created backup: ${backupPath}`, { backupPath }, 'edit_file');
           }
 
           // Read current file content

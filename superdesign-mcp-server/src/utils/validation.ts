@@ -1,4 +1,4 @@
-import path from 'path';
+import * as path from 'path';
 import { SecurityError, ValidationError } from '../types/mcp-types.js';
 import { MCPServerConfig } from '../types/mcp-types.js';
 
@@ -9,17 +9,90 @@ export class SecurityValidator {
    * Validate that a file path is within the workspace boundary
    */
   validatePath(filePath: string, workspaceRoot: string = this.config.workspaceRoot): string {
-    // Normalize paths
-    const normalizedPath = path.resolve(workspaceRoot, filePath);
+    // Input validation
+    if (!filePath || typeof filePath !== 'string') {
+      throw new SecurityError(
+        'Invalid file path: path must be a non-empty string',
+        { code: 'INVALID_PATH', requestedPath: filePath }
+      );
+    }
+
+    // Sanitize input path - remove dangerous characters and patterns
+    const sanitizedPath = filePath
+      .replace(/[<>:"|?*]/g, '')  // Remove invalid filename chars
+      .replace(/\s+/g, ' ')      // Normalize whitespace
+      .trim();
+
+    if (!sanitizedPath) {
+      throw new SecurityError(
+        'Invalid file path: path contains only invalid characters',
+        { code: 'INVALID_PATH', requestedPath: filePath }
+      );
+    }
+
+    // Check for obvious traversal patterns in original input
+    const traversalPatterns = [
+      /\.\.[\/\\]/,           // ../
+      /[\/\\]\.\.[\/\\]/,      // /../ or \..
+      /\.\.%2f/i,             // URL encoded ../
+      /\.\.%5c/i,             // URL encoded \
+      /\.\.%252f/i,           // Double URL encoded ../
+      /\.\.%255c/i,           // Double URL encoded \
+    ];
+
+    for (const pattern of traversalPatterns) {
+      if (pattern.test(filePath)) {
+        throw new SecurityError(
+          `Path traversal attempt detected in "${filePath}"`,
+          { code: 'PATH_TRAVERSAL', requestedPath: filePath, pattern: pattern.source }
+        );
+      }
+    }
+
+    // Normalize paths using absolute resolution
+    const normalizedPath = path.resolve(workspaceRoot, sanitizedPath);
     const normalizedRoot = path.resolve(workspaceRoot);
 
-    // Check for directory traversal attempts
+    // Additional security checks
+    // Ensure the normalized path is actually within the workspace
     if (!normalizedPath.startsWith(normalizedRoot)) {
       throw new SecurityError(
-        `Path "${filePath}" is outside workspace boundary`,
-        'PATH_TRAVERSAL',
-        { requestedPath: filePath, normalizedPath, workspaceRoot: normalizedRoot }
+        `Path "${filePath}" resolves outside workspace boundary`,
+        {
+          code: 'PATH_TRAVERSAL',
+          requestedPath: filePath,
+          sanitizedPath,
+          normalizedPath,
+          workspaceRoot: normalizedRoot
+        }
       );
+    }
+
+    // Prevent access to sensitive system directories
+    const forbiddenPaths = [
+      '/etc',
+      '/root',
+      '/boot',
+      '/sys',
+      '/proc',
+      '/dev',
+      '/bin',
+      '/sbin',
+      '/usr/bin',
+      '/usr/sbin',
+      '/var/log',
+      '/var/spool',
+      '/tmp'
+    ];
+
+    const resolvedPathLower = normalizedPath.toLowerCase();
+    for (const forbidden of forbiddenPaths) {
+      if (resolvedPathLower.startsWith(forbidden.toLowerCase())) {
+        throw new SecurityError(
+          `Access to forbidden system directory "${forbidden}" denied`,
+          { code: 'FORBIDDEN_PATH', requestedPath: filePath, resolvedPath: normalizedPath, forbiddenPath: forbidden }
+        );
+      }
     }
 
     return normalizedPath;
@@ -34,8 +107,7 @@ export class SecurityValidator {
     if (!this.config.allowedFileTypes.includes(ext)) {
       throw new SecurityError(
         `File type "${ext}" is not allowed`,
-        'INVALID_FILE_TYPE',
-        { filePath, allowedTypes: this.config.allowedFileTypes }
+        { code: 'INVALID_FILE_TYPE', filePath, allowedTypes: this.config.allowedFileTypes }
       );
     }
   }
@@ -47,8 +119,7 @@ export class SecurityValidator {
     if (fileSize > this.config.maxFileSize) {
       throw new SecurityError(
         `File size ${fileSize} bytes exceeds maximum allowed size ${this.config.maxFileSize} bytes`,
-        'FILE_TOO_LARGE',
-        { fileSize, maxSize: this.config.maxFileSize }
+        { code: 'FILE_TOO_LARGE', fileSize, maxSize: this.config.maxFileSize }
       );
     }
   }
@@ -79,8 +150,7 @@ export class SecurityValidator {
       if (pattern.test(command)) {
         throw new SecurityError(
           `Command contains potentially dangerous operations`,
-          'UNSAFE_COMMAND',
-          { command, pattern: pattern.source }
+          { code: 'UNSAFE_COMMAND', command, pattern: pattern.source }
         );
       }
     }

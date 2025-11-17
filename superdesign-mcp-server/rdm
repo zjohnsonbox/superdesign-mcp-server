@@ -3,7 +3,7 @@
     claude mcp remove superdesign -s user
     claude mcp add --transport stdio --scope user superdesign  \
     --env AI_PROVIDER="custom-api" --env SECURITY_MODE="strict" \
-    --env WORKSPACE_ROOT="$pwd" \
+    --env WORKSPACE_ROOT="~/.superdesign" \
     -- \
     npx tsx "$pwd/src/index.ts"
 

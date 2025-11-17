@@ -301,13 +301,13 @@ add_superdesign_mcp() {
     echo "Required variables (with default values):"
     echo "• AI_PROVIDER: custom-api"
     echo "• SECURITY_MODE: strict"
-    echo "• WORKSPACE_ROOT: $current_dir"
+    echo "• WORKSPACE_ROOT: $HOME/.superdesign (default) # set in .env or export"
     echo
     echo "Optional variables (will use defaults if not provided):"
     echo "• ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-'NOT_SET (will inherit from Claude)'}"
     echo "• ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-'https://open.bigmodel.cn/api/anthropic'}"
     echo "• LOG_LEVEL: info"
-    echo "• LOG_DIR: ~/.superdesign/logs"
+    echo "• LOG_DIR: $HOME/.superdesign/logs"
     echo
 
     # Add MCP server with environment variables
@@ -319,7 +319,7 @@ add_superdesign_mcp() {
     # Core configuration variables
     local ai_provider=$(get_env_value "AI_PROVIDER" "custom-api" "$env_file")
     local security_mode=$(get_env_value "SECURITY_MODE" "strict" "$env_file")
-    local workspace_root=$(get_env_value "WORKSPACE_ROOT" "$current_dir" "$env_file")
+    local workspace_root=$(get_env_value "WORKSPACE_ROOT" "$HOME/.superdesign" "$env_file")
 
     env_vars+=("-e" "AI_PROVIDER=$ai_provider")
     env_vars+=("-e" "SECURITY_MODE=$security_mode")
@@ -385,11 +385,15 @@ add_superdesign_mcp() {
     echo
 
     # Execute the MCP add command
+    echo "env string is: ${env_vars[@]}"
     claude mcp add \
         superdesign \
         npx tsx "$current_dir/src/index.ts" \
         "${env_vars[@]}" \
         -s user
+
+    echo "claude mcp get superdesign"
+    claude mcp get superdesign
 
     if [[ $? -eq 0 ]]; then
         log_success "SuperDesign MCP server added successfully"
@@ -489,9 +493,9 @@ main() {
     log_info "You can now use SuperDesign MCP server tools in your Claude Code CLI sessions."
     echo
     log_info "📋 Logging Information:"
-    echo "  - Log file location: ~/.superdesign/logs/superdesign-mcp.log"
-    echo "  - View live logs: tail -f ~/.superdesign/logs/superdesign-mcp.log"
-    echo "  - Search for errors: grep 'ERROR' ~/.superdesign/logs/superdesign-mcp.log"
+    echo "  - Log file location: $HOME/.superdesign/logs/superdesign-mcp.log"
+    echo "  - View live logs: tail -f $HOME/.superdesign/logs/superdesign-mcp.log"
+    echo "  - Search for errors: grep 'ERROR' $HOME/.superdesign/logs/superdesign-mcp.log"
     echo "  - Recent logs also available: claude mcp get superdesign"
     echo "  - Check logging status: claude 'get_logging_status'"
     echo

@@ -141,7 +141,6 @@ cleanup_log_files() {
     local log_dirs=(
         "$HOME/.superdesign/logs"
         ".superdesign/logs"
-        "logs"
         "./logs"
     )
 
@@ -347,9 +346,6 @@ add_superdesign_mcp() {
     local enable_console_logging=$(get_env_value "ENABLE_CONSOLE_LOGGING" "true" "$env_file")
     local max_log_size=$(get_env_value "MAX_LOG_SIZE_MB" "10" "$env_file")
     local log_file_backups=$(get_env_value "LOG_FILE_BACKUPS" "5" "$env_file")
-
-    # Expand ~ in log directory path
-    log_dir="${log_dir/#\~/$HOME}"
 
     env_vars+=("-e" "LOG_DIR=$log_dir")
     env_vars+=("-e" "LOG_LEVEL=$log_level")
